@@ -8,5 +8,5 @@
 - You can resize and move the _Portion of Screen_ window while presenting.
 
 #### Notes
-- You (the presenter) won't see the Portion of Screen window if it doesn't have the focus. However, your audience will see the Portion of Screen window.
-- If you close the Portion of Screen window, Teams will automatically stop sharing.
+- You (the presenter) won't see the _Portion of Screen_ window if it doesn't have the focus. However, your audience will see the _Portion of Screen_ window.
+- If you close the _Portion of Screen_ window, Teams will automatically stop sharing.
