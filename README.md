@@ -9,4 +9,5 @@ _Portion of Screen_ is a lightweight Windows application that enables you to sha
 
 #### Notes
 - You (the presenter) won't see the _Portion of Screen_ window if it doesn't have the focus. However, your audience will see the _Portion of Screen_ window.
+- You can send the _Portion of Screen_ window to the background by right clicking it.
 - If you close the _Portion of Screen_ window, Teams will automatically stop sharing.
