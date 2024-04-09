@@ -13,6 +13,9 @@
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+HWND hPortionOfScreenMainWnd;                   // the main window handle
+HWINEVENTHOOK hWinEventHook;
+bool followMode{ false };
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -38,6 +41,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     LoadStringW(hInstance, IDC_PORTIONOFSCREEN, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
 
+    // if command line argument is "follow", the window should follow the focused window
+    if (wcsicmp(lpCmdLine, L"-follow") == 0)
+    {
+      followMode = true;
+    }
+    
     // Perform application initialization:
     if (!InitInstance (hInstance, nCmdShow))
     {
@@ -84,6 +93,54 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
+static void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime)
+{
+  if (event == EVENT_SYSTEM_FOREGROUND)
+  {
+    // exit if the instance is not in follow mode
+    if (!followMode)
+      return;
+
+    // exit if the focused window is this window
+    if (hwnd == hPortionOfScreenMainWnd)
+      return;
+
+    OutputDebugString(L"A window has been focused!\n");
+    wchar_t buffer[32768];
+    
+    // get the title of the focused window
+    wchar_t title[16384];
+    GetWindowText(hwnd, title, 16384);
+    swprintf_s(buffer, L"Title: %s\n", title);
+    OutputDebugString(buffer);
+    
+    // get the dimensions of the focused window
+    RECT rect;
+    GetWindowRect(hwnd, &rect);
+    swprintf_s(buffer, L"left: %d, top: %d, right: %d, bottom: %d\n", rect.left, rect.top, rect.right, rect.bottom);
+    OutputDebugString(buffer);
+
+    // get the monitor of the focused window
+    HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    MONITORINFOEX monitorInfo;
+    monitorInfo.cbSize = sizeof(MONITORINFOEX);
+    GetMonitorInfo(hMonitor, &monitorInfo);
+    swprintf_s(buffer, L"Monitor: %s\n", monitorInfo.szDevice);
+    OutputDebugString(buffer);
+
+    // TODO: respect monitor scaling
+    DEVMODE devMode;
+    devMode.dmSize = sizeof(DEVMODE);
+    devMode.dmDriverExtra = 0;
+    EnumDisplaySettings(monitorInfo.szDevice, ENUM_CURRENT_SETTINGS, &devMode);
+    swprintf_s(buffer, L"Scale factor: %d\n", devMode.dmPelsWidth / GetSystemMetrics(SM_CXSCREEN));
+    OutputDebugString(buffer);
+
+    // resize this window to the same dimensions as the focused window without activating this window
+    SetWindowPos(hPortionOfScreenMainWnd, HWND_TOPMOST, rect.left, rect.top, rect.right - rect.left + 1, rect.bottom - rect.top + 1, SWP_NOACTIVATE);
+  }
+}
+
 //
 //   FUNCTION: InitInstance(HINSTANCE, int)
 //
@@ -101,7 +158,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    RECT rect;
    LoadWindowPosition(rect);
 
-   HWND hWnd = CreateWindowExW(
+   hPortionOfScreenMainWnd = CreateWindowExW(
        WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
        szWindowClass,
        szTitle,
@@ -115,16 +172,18 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
        hInstance,
        nullptr);
 
-   if (!hWnd)
+   if (!hPortionOfScreenMainWnd)
    {
       return FALSE;
    }
 
-   ShowWindow(hWnd, nCmdShow);
-   SetLayeredWindowAttributes(hWnd, RGB(255, 255, 255), 128, LWA_ALPHA);
-   UpdateWindow(hWnd);
+   hWinEventHook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
 
-   SetTimer(hWnd, IDT_REDRAW, 200, (TIMERPROC)NULL);
+   ShowWindow(hPortionOfScreenMainWnd, nCmdShow);
+   SetLayeredWindowAttributes(hPortionOfScreenMainWnd, RGB(255, 255, 255), 128, LWA_ALPHA);
+   UpdateWindow(hPortionOfScreenMainWnd);
+
+   SetTimer(hPortionOfScreenMainWnd, IDT_REDRAW, 200, (TIMERPROC)NULL);
 
    return TRUE;
 }
@@ -188,6 +247,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_DESTROY:
     {
+        UnhookWinEvent(hWinEventHook);
         RECT rect;
         GetWindowRect(hWnd, &rect);
         SaveWindowPosition(rect);
@@ -195,7 +255,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     break;
 
-    default:
+default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
 
