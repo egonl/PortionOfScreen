@@ -13,7 +13,6 @@
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
-HWINEVENTHOOK hWinEventHook;
 bool followMode =  false;
 RECT defaultWindowPos;
 
@@ -41,12 +40,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     LoadStringW(hInstance, IDC_PORTIONOFSCREEN, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
 
-    // if command line argument is "follow", the window should follow the focused window
-    if (_wcsicmp(lpCmdLine, L"-follow") == 0)
-    {
-      followMode = true;
-    }
-    
     // Perform application initialization:
     if (!InitInstance (hInstance, nCmdShow))
     {
@@ -161,6 +154,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             GetWindowRect(hWnd, &rect);
             if (rect.right - rect.left < 100 || rect.bottom - rect.top < 100)
             {
+                // Prevent a very small Portion of Screen main window
                 SetWindowPos(hWnd, HWND_TOPMOST, defaultWindowPos.left, defaultWindowPos.top, defaultWindowPos.right - defaultWindowPos.left, defaultWindowPos.bottom - defaultWindowPos.top, 0);
             }
         }
