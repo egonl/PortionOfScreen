@@ -13,9 +13,9 @@
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
-HWND hPortionOfScreenMainWnd;                   // the main window handle
 HWINEVENTHOOK hWinEventHook;
-bool followMode{ false };
+bool followMode =  false;
+RECT defaultWindowPos;
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -42,7 +42,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     MyRegisterClass(hInstance);
 
     // if command line argument is "follow", the window should follow the focused window
-    if (wcsicmp(lpCmdLine, L"-follow") == 0)
+    if (_wcsicmp(lpCmdLine, L"-follow") == 0)
     {
       followMode = true;
     }
@@ -93,54 +93,6 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
-static void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime)
-{
-  if (event == EVENT_SYSTEM_FOREGROUND)
-  {
-    // exit if the instance is not in follow mode
-    if (!followMode)
-      return;
-
-    // exit if the focused window is this window
-    if (hwnd == hPortionOfScreenMainWnd)
-      return;
-
-    OutputDebugString(L"A window has been focused!\n");
-    wchar_t buffer[32768];
-    
-    // get the title of the focused window
-    wchar_t title[16384];
-    GetWindowText(hwnd, title, 16384);
-    swprintf_s(buffer, L"Title: %s\n", title);
-    OutputDebugString(buffer);
-    
-    // get the dimensions of the focused window
-    RECT rect;
-    GetWindowRect(hwnd, &rect);
-    swprintf_s(buffer, L"left: %d, top: %d, right: %d, bottom: %d\n", rect.left, rect.top, rect.right, rect.bottom);
-    OutputDebugString(buffer);
-
-    // get the monitor of the focused window
-    HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-    MONITORINFOEX monitorInfo;
-    monitorInfo.cbSize = sizeof(MONITORINFOEX);
-    GetMonitorInfo(hMonitor, &monitorInfo);
-    swprintf_s(buffer, L"Monitor: %s\n", monitorInfo.szDevice);
-    OutputDebugString(buffer);
-
-    // TODO: respect monitor scaling
-    DEVMODE devMode;
-    devMode.dmSize = sizeof(DEVMODE);
-    devMode.dmDriverExtra = 0;
-    EnumDisplaySettings(monitorInfo.szDevice, ENUM_CURRENT_SETTINGS, &devMode);
-    swprintf_s(buffer, L"Scale factor: %d\n", devMode.dmPelsWidth / GetSystemMetrics(SM_CXSCREEN));
-    OutputDebugString(buffer);
-
-    // resize this window to the same dimensions as the focused window without activating this window
-    SetWindowPos(hPortionOfScreenMainWnd, HWND_TOPMOST, rect.left, rect.top, rect.right - rect.left + 1, rect.bottom - rect.top + 1, SWP_NOACTIVATE);
-  }
-}
-
 //
 //   FUNCTION: InitInstance(HINSTANCE, int)
 //
@@ -155,35 +107,32 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
 
-   RECT rect;
-   LoadWindowPosition(rect);
+   LoadWindowPosition(defaultWindowPos);
 
-   hPortionOfScreenMainWnd = CreateWindowExW(
+   HWND hWnd = CreateWindowExW(
        WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
        szWindowClass,
        szTitle,
        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MAXIMIZEBOX,
-       rect.left,
-       rect.top,
-       rect.right - rect.left + 1,
-       rect.bottom - rect.top + 1,
+       defaultWindowPos.left,
+       defaultWindowPos.top,
+       defaultWindowPos.right - defaultWindowPos.left,
+       defaultWindowPos.bottom - defaultWindowPos.top,
        nullptr,
        nullptr,
        hInstance,
        nullptr);
 
-   if (!hPortionOfScreenMainWnd)
+   if (!hWnd)
    {
       return FALSE;
    }
 
-   hWinEventHook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
+   ShowWindow(hWnd, nCmdShow);
+   SetLayeredWindowAttributes(hWnd, RGB(255, 255, 255), 128, LWA_ALPHA);
+   UpdateWindow(hWnd);
 
-   ShowWindow(hPortionOfScreenMainWnd, nCmdShow);
-   SetLayeredWindowAttributes(hPortionOfScreenMainWnd, RGB(255, 255, 255), 128, LWA_ALPHA);
-   UpdateWindow(hPortionOfScreenMainWnd);
-
-   SetTimer(hPortionOfScreenMainWnd, IDT_REDRAW, 200, (TIMERPROC)NULL);
+   SetTimer(hWnd, IDT_REDRAW, 200, (TIMERPROC)NULL);
 
    return TRUE;
 }
@@ -197,15 +146,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
-    case WM_LBUTTONUP:
+    case WM_RBUTTONUP:
         DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
         break;
 
-    case WM_RBUTTONUP:
+    case WM_LBUTTONUP:
         SetWindowPos(hWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
         break;
 
     case WM_SETFOCUS:
+        if (followMode)
+        {
+            RECT rect;
+            GetWindowRect(hWnd, &rect);
+            if (rect.right - rect.left < 100 || rect.bottom - rect.top < 100)
+            {
+                SetWindowPos(hWnd, HWND_TOPMOST, defaultWindowPos.left, defaultWindowPos.top, defaultWindowPos.right - defaultWindowPos.left, defaultWindowPos.bottom - defaultWindowPos.top, 0);
+            }
+        }
         SetLayeredWindowAttributes(hWnd, RGB(255, 255, 255), 128, LWA_ALPHA);
         SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOPMOST);
         return DefWindowProc(hWnd, message, wParam, lParam);
@@ -219,6 +177,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         switch (wParam)
         {
         case IDT_REDRAW:
+            if (followMode)
+            {
+                HWND hForegroundWindow = GetForegroundWindow();
+                RECT rect;
+                GetWindowRect(hForegroundWindow, &rect);
+                SetWindowPos(hWnd, HWND_TOPMOST, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_NOACTIVATE);
+            }
+            
             InvalidateRect(hWnd, NULL, TRUE);
         }
         break;
@@ -247,7 +213,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_DESTROY:
     {
-        UnhookWinEvent(hWinEventHook);
         RECT rect;
         GetWindowRect(hWnd, &rect);
         SaveWindowPosition(rect);
@@ -255,7 +220,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     break;
 
-default:
+    default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
 
@@ -269,6 +234,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message)
     {
     case WM_INITDIALOG:
+        SendMessage(GetDlgItem(hDlg, IDC_FOLLOW_MODE), BM_SETCHECK, followMode ? BST_CHECKED : BST_UNCHECKED, 0);
         return (INT_PTR)TRUE;
 
     case WM_COMMAND:
@@ -276,6 +242,12 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         {
             EndDialog(hDlg, LOWORD(wParam));
             return (INT_PTR)TRUE;
+        }
+
+        if (LOWORD(wParam) == IDC_FOLLOW_MODE)
+        {
+            UINT state = SendMessage(GetDlgItem(hDlg, IDC_FOLLOW_MODE), BM_GETCHECK, 0, 0);
+            followMode = state == BST_CHECKED;
         }
         break;
     }
@@ -286,11 +258,12 @@ void LoadWindowPosition(RECT& rect)
 {
     try
     {
-        winreg::RegKey  key{ HKEY_CURRENT_USER, L"SOFTWARE\\PortionOfScreen" };
+        winreg::RegKey key{ HKEY_CURRENT_USER, L"SOFTWARE\\PortionOfScreen" };
         rect.left = key.GetDwordValue(L"Left");
         rect.top = key.GetDwordValue(L"Top");
         rect.right = key.GetDwordValue(L"Right");
         rect.bottom = key.GetDwordValue(L"Bottom");
+        followMode = (bool) key.TryGetDwordValue(L"FollowMode");
     }
     catch(...)
     {
@@ -303,9 +276,10 @@ void LoadWindowPosition(RECT& rect)
 
 void SaveWindowPosition(RECT& rect)
 {
-    winreg::RegKey  key{ HKEY_CURRENT_USER, L"SOFTWARE\\PortionOfScreen" };
+    winreg::RegKey key{ HKEY_CURRENT_USER, L"SOFTWARE\\PortionOfScreen" };
     key.SetDwordValue(L"Left", rect.left);
     key.SetDwordValue(L"Top", rect.top);
     key.SetDwordValue(L"Right", rect.right);
     key.SetDwordValue(L"Bottom", rect.bottom);
+    key.SetDwordValue(L"FollowMode", (DWORD) followMode);
 }
