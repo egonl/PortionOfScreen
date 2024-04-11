@@ -12,7 +12,7 @@
 #define IDI_SMALL                       108
 #define IDC_PORTIONOFSCREEN             109
 #define IDR_MAINFRAME                   128
-#define IDC_FOLLOW_MODE                 1003
+#define IDC_FOCUS_MODE                  1003
 #define IDC_STATIC                      -1
 
 // Next default values for new objects

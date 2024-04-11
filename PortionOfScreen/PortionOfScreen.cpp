@@ -16,7 +16,7 @@ WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 // Global settings
-bool followMode =  false;
+bool focusMode =  false;
 RECT defaultWindowPos;
 
 // Forward declarations of functions included in this code module:
@@ -151,7 +151,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_SETFOCUS:
-        if (followMode)
+        if (focusMode)
         {
             // The window could be anywhere in Follow Mode, even over the taskbar. So quickly move window to non-follow mode position.
             SetWindowPos(hWnd, HWND_TOPMOST, defaultWindowPos.left, defaultWindowPos.top, defaultWindowPos.right - defaultWindowPos.left, defaultWindowPos.bottom - defaultWindowPos.top, 0);
@@ -183,7 +183,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         switch (wParam)
         {
         case IDT_REDRAW:
-            if (followMode)
+            if (focusMode)
             {
                 HWND hwndForeground = GetForegroundWindow();
                 if (hwndForeground != hWnd)
@@ -257,7 +257,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message)
     {
     case WM_INITDIALOG:
-        SendMessage(GetDlgItem(hDlg, IDC_FOLLOW_MODE), BM_SETCHECK, followMode ? BST_CHECKED : BST_UNCHECKED, 0);
+        SendMessage(GetDlgItem(hDlg, IDC_FOCUS_MODE), BM_SETCHECK, focusMode ? BST_CHECKED : BST_UNCHECKED, 0);
         return (INT_PTR)TRUE;
 
     case WM_COMMAND:
@@ -267,10 +267,10 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
             return (INT_PTR)TRUE;
         }
 
-        if (LOWORD(wParam) == IDC_FOLLOW_MODE)
+        if (LOWORD(wParam) == IDC_FOCUS_MODE)
         {
-            UINT checkState = (UINT) SendMessage(GetDlgItem(hDlg, IDC_FOLLOW_MODE), BM_GETCHECK, 0, 0);
-            followMode = checkState == BST_CHECKED;
+            UINT checkState = (UINT) SendMessage(GetDlgItem(hDlg, IDC_FOCUS_MODE), BM_GETCHECK, 0, 0);
+            focusMode = checkState == BST_CHECKED;
         }
         break;
     }
@@ -286,7 +286,7 @@ void LoadSettings()
         defaultWindowPos.top = key.GetDwordValue(L"Top");
         defaultWindowPos.right = key.GetDwordValue(L"Right");
         defaultWindowPos.bottom = key.GetDwordValue(L"Bottom");
-        followMode = (bool) key.TryGetDwordValue(L"FollowMode");
+        focusMode = (bool) key.TryGetDwordValue(L"FollowMode");
     }
     catch(...)
     {
@@ -304,5 +304,5 @@ void SaveSettings()
     key.SetDwordValue(L"Top", defaultWindowPos.top);
     key.SetDwordValue(L"Right", defaultWindowPos.right);
     key.SetDwordValue(L"Bottom", defaultWindowPos.bottom);
-    key.SetDwordValue(L"FollowMode", (DWORD) followMode);
+    key.SetDwordValue(L"FollowMode", (DWORD) focusMode);
 }
