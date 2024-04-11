@@ -6,7 +6,8 @@
 #include "WinReg.hpp"
 
 #define MAX_LOADSTRING 100
-#define IDT_REDRAW 101
+#define IDT_REDRAW     101
+#define IDC_OPTIONS    1100
 #define POS_MIN_WIDTH  320
 #define POS_MIN_HEIGHT 200
 
@@ -124,6 +125,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
       return FALSE;
    }
 
+   HMENU hSysMenu = GetSystemMenu(hWnd, FALSE);
+   AppendMenu(hSysMenu, MF_SEPARATOR, 0, NULL);
+   AppendMenu(hSysMenu, MF_STRING, IDC_OPTIONS, L"Options");
+
    ShowWindow(hWnd, nCmdShow);
    SetLayeredWindowAttributes(hWnd, RGB(255, 255, 255), 128, LWA_ALPHA);
    UpdateWindow(hWnd);
@@ -142,10 +147,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
-    case WM_RBUTTONUP:
-        DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-        break;
-
     case WM_LBUTTONUP:
         SetWindowPos(hWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
         break;
@@ -242,6 +243,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SaveSettings();
         PostQuitMessage(0);
         break;
+
+    case WM_SYSCOMMAND:
+        if (wParam == IDC_OPTIONS)
+        {
+            DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+            break;
+        }
+        // fall through
 
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
