@@ -150,14 +150,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_SETFOCUS:
         if (followMode)
         {
-            RECT rect;
-            GetWindowRect(hWnd, &rect);
-            if (rect.right - rect.left < 100 || rect.bottom - rect.top < 100)
-            {
-                // Prevent a very small Portion of Screen main window
-                SetWindowPos(hWnd, HWND_TOPMOST, defaultWindowPos.left, defaultWindowPos.top, defaultWindowPos.right - defaultWindowPos.left, defaultWindowPos.bottom - defaultWindowPos.top, 0);
-            }
+            // The window could be anywhere in Follow Mode, even over the taskbar. So quickly move window to non-follow mode position.
+            SetWindowPos(hWnd, HWND_TOPMOST, defaultWindowPos.left, defaultWindowPos.top, defaultWindowPos.right - defaultWindowPos.left, defaultWindowPos.bottom - defaultWindowPos.top, 0);
         }
+
         SetLayeredWindowAttributes(hWnd, RGB(255, 255, 255), 128, LWA_ALPHA);
         SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOPMOST);
         return DefWindowProc(hWnd, message, wParam, lParam);
@@ -167,16 +163,42 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT);
         return DefWindowProc(hWnd, message, wParam, lParam);
 
+    case WM_SIZE:
+    case WM_MOVE:
+    {
+        LRESULT result = DefWindowProc(hWnd, message, wParam, lParam);
+
+        if (GetForegroundWindow() == hWnd)
+        {
+            GetWindowRect(hWnd, &defaultWindowPos);
+        }
+
+        return result;
+    }
+
     case WM_TIMER:
         switch (wParam)
         {
         case IDT_REDRAW:
             if (followMode)
             {
-                HWND hForegroundWindow = GetForegroundWindow();
-                RECT rect;
-                GetWindowRect(hForegroundWindow, &rect);
-                SetWindowPos(hWnd, HWND_TOPMOST, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_NOACTIVATE);
+                HWND hwndForeground = GetForegroundWindow();
+                if (hwndForeground != hWnd)
+                {
+                    RECT rectForeground;
+                    GetWindowRect(hwndForeground, &rectForeground);
+
+                    RECT rectPoS;
+                    GetWindowRect(hWnd, &rectPoS);
+
+                    if (rectPoS.left != rectForeground.left ||
+                        rectPoS.top != rectForeground.top ||
+                        rectPoS.right != rectForeground.right ||
+                        rectPoS.bottom != rectForeground.bottom)
+                    {
+                        SetWindowPos(hWnd, HWND_TOPMOST, rectForeground.left, rectForeground.top, rectForeground.right - rectForeground.left, rectForeground.bottom - rectForeground.top, SWP_NOACTIVATE);
+                    }
+                }
             }
             
             InvalidateRect(hWnd, NULL, TRUE);
@@ -206,13 +228,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     break;
 
     case WM_DESTROY:
-    {
-        RECT rect;
-        GetWindowRect(hWnd, &rect);
-        SaveWindowPosition(rect);
+        SaveWindowPosition(defaultWindowPos);
         PostQuitMessage(0);
-    }
-    break;
+        break;
 
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
@@ -240,8 +258,8 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
         if (LOWORD(wParam) == IDC_FOLLOW_MODE)
         {
-            UINT state = SendMessage(GetDlgItem(hDlg, IDC_FOLLOW_MODE), BM_GETCHECK, 0, 0);
-            followMode = state == BST_CHECKED;
+            UINT checkState = (UINT) SendMessage(GetDlgItem(hDlg, IDC_FOLLOW_MODE), BM_GETCHECK, 0, 0);
+            followMode = checkState == BST_CHECKED;
         }
         break;
     }
