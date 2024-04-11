@@ -194,10 +194,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     RECT rectPoS;
                     GetWindowRect(hWnd, &rectPoS);
 
-                    if (rectPoS.left != rectForeground.left ||
+                    if ((rectPoS.left != rectForeground.left ||
                         rectPoS.top != rectForeground.top ||
                         rectPoS.right != rectForeground.right ||
-                        rectPoS.bottom != rectForeground.bottom)
+                        rectPoS.bottom != rectForeground.bottom)) //&&
+                        //rectForeground.right - rectForeground.left >= POS_MIN_WIDTH &&
+                        //rectForeground.bottom - rectForeground.top >= POS_MIN_HEIGHT)
                     {
                         SetWindowPos(hWnd, HWND_TOPMOST, rectForeground.left, rectForeground.top, rectForeground.right - rectForeground.left, rectForeground.bottom - rectForeground.top, SWP_NOACTIVATE);
                     }
