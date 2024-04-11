@@ -154,7 +154,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_SETFOCUS:
         if (focusMode)
         {
-            // The window could be anywhere in Follow Mode, even over the taskbar. So quickly move window to non-follow mode position.
+            // The window could be anywhere in Focus Mode, even over the taskbar. Quickly move window to it's original position.
             SetWindowPos(hWnd, HWND_TOPMOST, defaultWindowPos.left, defaultWindowPos.top, defaultWindowPos.right - defaultWindowPos.left, defaultWindowPos.bottom - defaultWindowPos.top, 0);
         }
 
@@ -295,7 +295,7 @@ void LoadSettings()
         defaultWindowPos.top = key.GetDwordValue(L"Top");
         defaultWindowPos.right = key.GetDwordValue(L"Right");
         defaultWindowPos.bottom = key.GetDwordValue(L"Bottom");
-        focusMode = (bool) key.TryGetDwordValue(L"FollowMode");
+        focusMode = (bool) key.TryGetDwordValue(L"FocusMode");
     }
     catch(...)
     {
@@ -313,5 +313,5 @@ void SaveSettings()
     key.SetDwordValue(L"Top", defaultWindowPos.top);
     key.SetDwordValue(L"Right", defaultWindowPos.right);
     key.SetDwordValue(L"Bottom", defaultWindowPos.bottom);
-    key.SetDwordValue(L"FollowMode", (DWORD) focusMode);
+    key.SetDwordValue(L"FocusMode", (DWORD) focusMode);
 }
