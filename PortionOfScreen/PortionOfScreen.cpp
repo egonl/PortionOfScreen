@@ -13,6 +13,8 @@
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+
+// Global settings
 bool followMode =  false;
 RECT defaultWindowPos;
 
@@ -21,8 +23,8 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-void                LoadWindowPosition(RECT& rect);
-void                SaveWindowPosition(RECT& rect);
+void                LoadSettings();
+void                SaveSettings();
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -100,7 +102,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
 
-   LoadWindowPosition(defaultWindowPos);
+   LoadSettings();
 
    HWND hWnd = CreateWindowExW(
        WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
@@ -228,7 +230,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     break;
 
     case WM_DESTROY:
-        SaveWindowPosition(defaultWindowPos);
+        SaveSettings();
         PostQuitMessage(0);
         break;
 
@@ -266,32 +268,32 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     return (INT_PTR)FALSE;
 }
 
-void LoadWindowPosition(RECT& rect)
+void LoadSettings()
 {
     try
     {
         winreg::RegKey key{ HKEY_CURRENT_USER, L"SOFTWARE\\PortionOfScreen" };
-        rect.left = key.GetDwordValue(L"Left");
-        rect.top = key.GetDwordValue(L"Top");
-        rect.right = key.GetDwordValue(L"Right");
-        rect.bottom = key.GetDwordValue(L"Bottom");
+        defaultWindowPos.left = key.GetDwordValue(L"Left");
+        defaultWindowPos.top = key.GetDwordValue(L"Top");
+        defaultWindowPos.right = key.GetDwordValue(L"Right");
+        defaultWindowPos.bottom = key.GetDwordValue(L"Bottom");
         followMode = (bool) key.TryGetDwordValue(L"FollowMode");
     }
     catch(...)
     {
-        rect.left = 100;
-        rect.top = 100;
-        rect.right = 900;
-        rect.bottom = 700;
+        defaultWindowPos.left = 100;
+        defaultWindowPos.top = 100;
+        defaultWindowPos.right = 900;
+        defaultWindowPos.bottom = 700;
     }
 }
 
-void SaveWindowPosition(RECT& rect)
+void SaveSettings()
 {
     winreg::RegKey key{ HKEY_CURRENT_USER, L"SOFTWARE\\PortionOfScreen" };
-    key.SetDwordValue(L"Left", rect.left);
-    key.SetDwordValue(L"Top", rect.top);
-    key.SetDwordValue(L"Right", rect.right);
-    key.SetDwordValue(L"Bottom", rect.bottom);
+    key.SetDwordValue(L"Left", defaultWindowPos.left);
+    key.SetDwordValue(L"Top", defaultWindowPos.top);
+    key.SetDwordValue(L"Right", defaultWindowPos.right);
+    key.SetDwordValue(L"Bottom", defaultWindowPos.bottom);
     key.SetDwordValue(L"FollowMode", (DWORD) followMode);
 }
