@@ -15,6 +15,7 @@
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+bool moveToDefaultWindowPos = false;
 
 // Global settings
 bool focusMode =  false;
@@ -152,10 +153,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_SETFOCUS:
-        if (focusMode)
+        if (focusMode || moveToDefaultWindowPos)
         {
             // The window could be anywhere in Focus Mode, even over the taskbar. Quickly move window to it's original position.
             SetWindowPos(hWnd, HWND_TOPMOST, defaultWindowPos.left, defaultWindowPos.top, defaultWindowPos.right - defaultWindowPos.left, defaultWindowPos.bottom - defaultWindowPos.top, 0);
+            moveToDefaultWindowPos = false;
         }
 
         SetLayeredWindowAttributes(hWnd, RGB(255, 255, 255), 128, LWA_ALPHA);
@@ -267,16 +269,18 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_INITDIALOG:
         SendMessage(GetDlgItem(hDlg, IDC_FOCUS_MODE), BM_SETCHECK, focusMode ? BST_CHECKED : BST_UNCHECKED, 0);
+        SendMessage(GetDlgItem(hDlg, IDC_FIXED_MODE), BM_SETCHECK, !focusMode ? BST_CHECKED : BST_UNCHECKED, 0);
         return (INT_PTR)TRUE;
 
     case WM_COMMAND:
         if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
         {
+            if (!focusMode) moveToDefaultWindowPos = true;
             EndDialog(hDlg, LOWORD(wParam));
             return (INT_PTR)TRUE;
         }
 
-        if (LOWORD(wParam) == IDC_FOCUS_MODE)
+        if (LOWORD(wParam) == IDC_FOCUS_MODE || LOWORD(wParam) == IDC_FIXED_MODE)
         {
             UINT checkState = (UINT) SendMessage(GetDlgItem(hDlg, IDC_FOCUS_MODE), BM_GETCHECK, 0, 0);
             focusMode = checkState == BST_CHECKED;
@@ -304,6 +308,7 @@ void LoadSettings()
         defaultWindowPos.top = 100;
         defaultWindowPos.right = 900;
         defaultWindowPos.bottom = 700;
+        focusMode = true;
     }
 }
 
