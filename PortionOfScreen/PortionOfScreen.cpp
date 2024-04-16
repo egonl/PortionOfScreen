@@ -153,9 +153,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_SETFOCUS:
-        if (focusMode || moveToDefaultWindowPos)
+        if (focusMode)
         {
             // The window could be anywhere in Focus Mode, even over the taskbar. Quickly move window to it's original position.
+            SetWindowPos(hWnd, HWND_TOPMOST, defaultWindowPos.left, defaultWindowPos.top, defaultWindowPos.right - defaultWindowPos.left, 0, 0);
+        }
+        else if (moveToDefaultWindowPos)
+        {
             SetWindowPos(hWnd, HWND_TOPMOST, defaultWindowPos.left, defaultWindowPos.top, defaultWindowPos.right - defaultWindowPos.left, defaultWindowPos.bottom - defaultWindowPos.top, 0);
             moveToDefaultWindowPos = false;
         }
@@ -176,7 +180,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         if (GetForegroundWindow() == hWnd)
         {
+            int prevBottom = defaultWindowPos.bottom;
             GetWindowRect(hWnd, &defaultWindowPos);
+            if (focusMode) defaultWindowPos.bottom = prevBottom;
         }
 
         return result;
@@ -237,7 +243,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         MINMAXINFO* lpMMI = (MINMAXINFO*)lParam;
         lpMMI->ptMinTrackSize.x = POS_MIN_WIDTH;
-        lpMMI->ptMinTrackSize.y = POS_MIN_HEIGHT;
+        if (focusMode)
+        {
+            lpMMI->ptMinTrackSize.y = GetSystemMetrics(SM_CYCAPTION);
+            // Prevent vertical sizing if the PoS window has the focus
+            if (hWnd == GetForegroundWindow())
+                lpMMI->ptMaxTrackSize.y = lpMMI->ptMinTrackSize.y;
+        }
+        else
+            lpMMI->ptMinTrackSize.y = POS_MIN_HEIGHT;
     }
     break;
 
