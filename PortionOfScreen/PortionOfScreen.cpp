@@ -16,6 +16,8 @@ HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 bool moveToDefaultWindowPos = false;
+HWND newFocusHwnd;
+unsigned int focusTime;
 
 // Global settings
 bool focusMode =  false;
@@ -197,6 +199,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 HWND hwndForeground = GetForegroundWindow();
                 if (hwndForeground != hWnd)
                 {
+                    // Add a slight delay between activating a window and moving the PoS window. 
+                    // This makes changing the focused window smoother, less jumpy.
+                    if (newFocusHwnd != hwndForeground)
+                    {
+                        newFocusHwnd = hwndForeground;
+                        focusTime = 0;
+                    }
+                    else
+                        ++focusTime;
+
+                    if (focusTime < 3)
+                        break;
+
                     RECT rectForeground;
                     GetWindowRect(hwndForeground, &rectForeground);
 
