@@ -314,7 +314,7 @@ void LoadSettings()
         defaultWindowPos.right = key.GetDwordValue(L"Right");
         defaultWindowPos.bottom = key.GetDwordValue(L"Bottom");
         winreg::RegExpected<DWORD> focusExpected = key.TryGetDwordValue(L"FocusMode");
-        focusMode = focusExpected.IsValid() ? (bool) focusExpected.GetValue() : false;
+        focusMode = focusExpected.IsValid() ? (bool) focusExpected.GetValue() : true;
     }
     catch(...)
     {
