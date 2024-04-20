@@ -5,6 +5,10 @@
 #include "PortionOfScreen.h"
 #include "WinReg.hpp"
 
+// Auto remove PoS caption by setting the WS_POPUP style in focused mode after one minute.
+// However, WS_POPUP windows can't be shared, so you have to share within one minute after de-activating PoS.
+//#define AUTO_REMOVE_CAPTION
+
 #define MAX_LOADSTRING 100
 #define IDT_REDRAW     101
 #define IDC_OPTIONS    1100
@@ -150,6 +154,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
+#ifdef AUTO_REMOVE_CAPTION
+    case WM_NCACTIVATE:
+    case WM_ACTIVATE:
+    case WM_ACTIVATEAPP:
+        // Restore PoS caption
+        SetWindowLong(hWnd, GWL_STYLE, WS_VISIBLE | WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MAXIMIZEBOX);
+        return DefWindowProc(hWnd, message, wParam, lParam);
+#endif
+
     case WM_LBUTTONUP:
         SetWindowPos(hWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
         break;
@@ -211,6 +224,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                     if (focusTime < 3)
                         break;
+
+#ifdef AUTO_REMOVE_CAPTION
+                    // Remove PoS caption after one minute. Can't do it earlier because you can't select WS_POPUP windows when sharing a window.
+                    if (focusTime > 300)
+                        SetWindowLong(hWnd, GWL_STYLE, WS_VISIBLE | WS_DISABLED | WS_POPUP);
+#endif
 
                     RECT rectForeground;
                     GetWindowRect(hwndForeground, &rectForeground);
